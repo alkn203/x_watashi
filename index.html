@@ -1,0 +1,187 @@
+<!doctype html>
+ 
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    
+    <title>エックス渡し</title>
+    <meta name="description" content="${description}" />
+    
+    <style>*, *:before, *:after {
+  box-sizing: border-box; 
+}
+html {
+  font-size: 62.5%;
+}
+body {
+  color: #444;
+  background-color: hsl(0, 0%, 96%);
+}
+h1 {
+  font-size: 1.8rem;
+}
+
+</style>
+  </head>
+  <body>
+    <script src="http://cdn.rawgit.com/phi-jp/phina.js/v0.2.1/build/phina.js"></script>
+    <script>// グローバルに展開
+phina.globalize();
+// 定数
+var SCREEN_WIDTH = 640;
+var SCREEN_HEIGHT = 960;
+/*
+ * メインシーン
+ */
+phina.define("MainScene", {
+  // 継承
+  superClass: 'DisplayScene',
+  // 初期化
+  init: function() {
+    // 親クラス初期化
+    this.superInit();
+    // 背景色
+    this.backgroundColor = 'black';
+
+    this.triangleGroup = DisplayElement().addChildTo(this);
+    this.crossGroup = DisplayElement().addChildTo(this);
+    // 上の〇
+    (10).times(function(i) {
+      CircleShape({
+        fill: null,
+        stroke: 'red',
+      }).addChildTo(this).setPosition(i*64 + 32, 32);
+    }, this);
+    // 下の〇
+    (10).times(function(i) {
+      CircleShape({
+        fill: null,
+        stroke: 'red',
+      }).addChildTo(this).setPosition(i*64 + 32, SCREEN_HEIGHT - 32);
+    }, this);
+    
+    this.score = 0;
+  },
+  // 毎フレーム更新処理
+  update: function(app) {
+    var self = this;
+    
+    if (app.frame % 50 === 0) {
+      var cross = Cross().addChildTo(this.crossGroup).setPosition(0, SCREEN_WIDTH / 2);
+
+      cross.ongoal = function() {
+        self.score++;
+        var label = Label({
+          text: self.score,
+          fill: 'yellow',
+        }).addChildTo(self).setPosition(SCREEN_WIDTH, cross.y);
+        
+        label.tweener.by({x: -64, alpha: -0.5}, 500)
+                  .call(function() {
+                    label.remove();  
+                  }).play();
+        
+        cross.remove();
+      };
+
+      cross.ondead = function() {
+        self.exit({
+          score: self.score,
+          message: 'エックス渡し',
+        });
+      };
+    }
+    
+    this.crossGroup.children.each(function(cross) {
+      self.triangleGroup.children.each(function(triangle) {
+          if (cross.hitTestElement(triangle)) {
+            cross.physical.velocity.y = -10;
+            triangle.remove();
+          }
+      });
+    });
+  },
+  
+  onpointstart: function(e) {
+    Triangle().addChildTo(this.triangleGroup)
+              .setPosition(e.pointer.x, SCREEN_HEIGHT - 64);
+  },
+});
+/*
+ * Xクラス
+ */
+phina.define("Cross", {
+  // 継承
+  superClass: 'Sprite',
+  // 初期化
+  init: function() {
+    // canvasに描画
+    var cvs = PlainElement();
+    cvs.canvas.context.strokeStyle = 'white';
+    cvs.canvas.context.lineWidth = 4;
+    cvs.canvas.drawLine(0, 0, 64, 64);
+    cvs.canvas.drawLine(64, 0, 0, 64);
+    // 親クラス初期化
+    this.superInit(cvs.canvas);
+
+    var vx = Array.range(4, 10).random();
+    var vy = Array.range(-4, -8).random();
+    this.physical.force(vx, vy);
+    this.physical.gravity.y = 0.5;
+  },
+  // 毎フレーム更新処理
+  update: function() {
+    this.rotation += 2;
+    
+    if (this.left > SCREEN_WIDTH - 32) this.flare('goal');
+    if (this.top < 64 || this.bottom > SCREEN_HEIGHT - 32) this.flare('dead');
+  },
+});
+/*
+ * △クラス
+ */
+phina.define("Triangle", {
+  // 継承
+  superClass: 'Sprite',
+  // 初期化
+  init: function() {
+    // canvasに描画
+    var cvs = PlainElement({
+      width: 32,
+      height: 32,
+    });
+    cvs.canvas.context.strokeStyle = 'lime';
+    cvs.canvas.context.lineWidth = 4;
+    cvs.canvas.drawLine(16, 0, 0, 32);
+    cvs.canvas.drawLine(0, 32, 32, 32);
+    cvs.canvas.drawLine(32, 32, 16, 0);
+    // 親クラス初期化
+    this.superInit(cvs.canvas);
+
+    this.physical.force(0, -25);
+  },
+  // 毎フレーム更新処理
+  update: function() {
+    if (this.top < 64) this.remove();
+  },
+});
+/*
+ * メイン処理
+ */
+phina.main(function() {
+  // アプリケーションを生成
+  var app = GameApp({
+    title: 'エックス渡し'
+    // MainScene から開始
+    //startLabel: 'main',
+  });
+  // fps表示
+  //app.enableStats();
+  // 実行
+  app.run();
+});</script>
+  </body>
+</html>
+
